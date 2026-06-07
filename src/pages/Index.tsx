@@ -82,7 +82,9 @@ export default function Index() {
   const [pushGranted, setPushGranted] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [showDeliveryInfo, setShowDeliveryInfo] = useState(false);
-  const [orderNumber] = useState(() => Math.floor(10000 + Math.random() * 90000));
+  const [orderNumber, setOrderNumber] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [form, setForm] = useState<FormData>({
     name: "",
     phone: "",
@@ -117,6 +119,45 @@ export default function Index() {
       }
     } finally {
       setPushLoading(false);
+    }
+  };
+
+  const submitOrder = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      const cartridge = CARTRIDGES.find((c) => c.id === form.cartridgeId);
+      const delivery = DELIVERY_OPTIONS.find((d) => d.id === form.deliveryId);
+      const total = (cartridge?.price ?? 0) * form.quantity + (delivery?.price ?? 0);
+      const res = await fetch("https://functions.poehali.dev/1c73c8c1-f276-4ff7-83c5-b726da5e7c37", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          phone: form.phone,
+          email: form.email,
+          cartridgeName: cartridge?.name ?? "",
+          cartridgeBrand: cartridge?.brand ?? "",
+          cartridgeColor: cartridge?.color ?? "",
+          cartridgePrice: cartridge?.price ?? 0,
+          quantity: form.quantity,
+          deliveryName: delivery?.name ?? "",
+          deliveryDays: delivery?.days ?? "",
+          deliveryPrice: delivery?.price ?? 0,
+          address: form.address,
+          comment: form.comment,
+          totalPrice: total,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error("Ошибка сервера");
+      setOrderNumber(data.orderNumber ?? "");
+      setStep("success");
+    } catch {
+      setSubmitError("Не удалось отправить заказ. Позвоните нам: +7 (495) 123-45-67");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -662,20 +703,43 @@ export default function Index() {
               </div>
             )}
 
+            {submitError && (
+              <div
+                className="flex items-center gap-2 p-3 rounded text-sm animate-fade-in"
+                style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171" }}
+              >
+                <Icon name="AlertCircle" size={15} />
+                {submitError}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => setStep("delivery")}
+                disabled={submitting}
                 className="px-5 py-3.5 rounded font-medium text-sm transition-all"
                 style={{ background: "var(--clr-steel)", color: "var(--clr-text)" }}
               >
                 ← Назад
               </button>
               <button
-                onClick={() => setStep("success")}
-                className="flex-1 py-3.5 rounded font-semibold text-sm transition-all"
-                style={{ background: "var(--clr-blue)", color: "#0a0f1e" }}
+                onClick={submitOrder}
+                disabled={submitting}
+                className="flex-1 py-3.5 rounded font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                style={{
+                  background: submitting ? "var(--clr-steel)" : "var(--clr-blue)",
+                  color: submitting ? "var(--clr-muted)" : "#0a0f1e",
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}
               >
-                Оформить заказ
+                {submitting ? (
+                  <>
+                    <Icon name="Loader" size={15} />
+                    Отправляем...
+                  </>
+                ) : (
+                  "Оформить заказ"
+                )}
               </button>
             </div>
           </div>
@@ -696,7 +760,7 @@ export default function Index() {
             <p className="text-sm mb-2" style={{ color: "var(--clr-text-dim)" }}>
               Номер заказа:{" "}
               <span className="font-mono-num font-semibold" style={{ color: "var(--clr-blue)" }}>
-                #CS-{orderNumber}
+                #{orderNumber}
               </span>
             </p>
             <p className="text-sm mb-8" style={{ color: "var(--clr-text-dim)" }}>
@@ -737,6 +801,8 @@ export default function Index() {
             <button
               onClick={() => {
                 setStep("order");
+                setOrderNumber("");
+                setSubmitError("");
                 setForm({
                   name: "", phone: "", email: "", cartridgeId: "", quantity: 1,
                   deliveryId: "standard", address: "", comment: "",

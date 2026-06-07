@@ -1,0 +1,34 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Отправка заказа",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "name": "Тест Тестов",
+        "phone": "+7 (999) 000-00-00",
+        "email": "",
+        "cartridgeName": "HP 85A / CE285A",
+        "cartridgeBrand": "HP",
+        "cartridgeColor": "Чёрный",
+        "cartridgePrice": 890,
+        "quantity": 2,
+        "deliveryName": "Стандарт",
+        "deliveryDays": "1 рабочий день",
+        "deliveryPrice": 150,
+        "address": "Москва, ул. Тестовая, 1",
+        "comment": "",
+        "totalPrice": 1930
+      },
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
